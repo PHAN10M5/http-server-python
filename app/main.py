@@ -10,19 +10,29 @@ def main():
     
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
     connection, address = server_socket.accept()
-    print("Client connected")
     
     request =connection.recv(1024).decode()
 
     request_lines = request.split(" ")
     method = request_lines[0]
     path = request_lines[1]
-    version = request_lines[2]
+    print(path)
 
-    if path == "/":
-        response = "HTTP/1.1 200 OK\r\n\r\n"
-    else:
-        response = "HTTP/1.1 404 Not Found\r\n\r\n"
+    response = "HTTP/1.1 404 Not Found\r\n\r\n"
+
+    if method == "GET":
+        
+        if path == "/":
+            response = "HTTP/1.1 200 OK\r\n\r\n"
+        elif path.startswith("/echo/"):
+            string_echo = path.split("/echo/")[1]
+            content_length = len(string_echo)
+            response = ("HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/plain\r\n"
+            f"Content-Length: {content_length}\r\n"
+            "\r\n"
+            f"{string_echo}"
+            )
 
     print(response)
     connection.sendall(response.encode())
