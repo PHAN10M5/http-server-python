@@ -22,12 +22,11 @@ def main():
     method = parts[0]
     path = parts[1]
 
+    user_agent = ""
     for header in headers:
         if header.lower().startswith("user-agent:"):
             user_agent = header.split(": ")[1]
             break
-
-    print(user_agent)
 
     if method == "GET" and path == "/user-agent":
         content_length = len(user_agent)
@@ -40,7 +39,6 @@ def main():
             )
     else:
         response = "HTTP/1.1 404 Not Found\r\n\r\n"
-    print(response)
     connection.sendall(response.encode())
     connection.close()
 
