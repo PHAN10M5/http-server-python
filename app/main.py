@@ -48,7 +48,7 @@ def main():
                 "\r\n"
                 f"{echo_string}"
             )
-
+    print(response)
     connection.sendall(response.encode())
     connection.close()
 
