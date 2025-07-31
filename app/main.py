@@ -32,7 +32,7 @@ def main():
         elif path == "/user-agent":
             content_length = len(user_agent.encode())
             response = (
-                "HTTP/1.1 200 OK\r\n\r\n"
+                "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
                 f"Content-Length: {content_length}\r\n"
                 "\r\n"
@@ -42,7 +42,7 @@ def main():
             echo_string = path[len("/echo/"):]
             content_length = len(echo_string.encode())
             response = (
-                "HTTP/1.1 200 OK\r\n\r\n"
+                "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
                 f"Content-Length: {content_length}\r\n"
                 "\r\n"
