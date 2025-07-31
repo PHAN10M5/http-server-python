@@ -16,23 +16,23 @@ def main():
     request_lines = request.split(" ")
     method = request_lines[0]
     path = request_lines[1]
-    print(path)
+    user_agent = request_lines[5].split("\r\n")[0]
 
+    print(user_agent)
     response = "HTTP/1.1 404 Not Found\r\n\r\n"
 
     if method == "GET":
         
-        if path == "/":
-            response = "HTTP/1.1 200 OK\r\n\r\n"
-        elif path.startswith("/echo/"):
-            string_echo = path.split("/echo/")[1]
-            content_length = len(string_echo)
-            response = ("HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/plain\r\n"
-            f"Content-Length: {content_length}\r\n"
-            "\r\n"
-            f"{string_echo}"
+        if user_agent:
+            content_length = len(user_agent)
+            response = (
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/plain\r\n"
+                f"Content-Length: {content_length}\r\n"
+                "\r\n"
+                f"{user_agent}"
             )
+
 
     print(response)
     connection.sendall(response.encode())
