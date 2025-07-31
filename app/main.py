@@ -20,7 +20,9 @@ def main():
     user_agent = ""
     for line in lines:
         if line.startswith("User-Agent: "):
-            user_agent = line[len("User-Agent: ")]
+            user_agent = line[len("User-Agent: "):]
+
+    print(user_agent)
 
     response = "HTTP/1.1 404 Not Found\r\n\r\n"
     
