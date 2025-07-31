@@ -13,27 +13,33 @@ def main():
     
     request =connection.recv(1024).decode()
 
-    request_lines = request.split(" ")
-    method = request_lines[0]
-    path = request_lines[1]
-    user_agent = request_lines[5].split("\r\n")[0]
+    lines = request.split("\r\n")
+    print(lines)
+    request_line = lines[0]
+    headers = lines[1:]
+
+    parts = request_line.split(" ")
+    method = parts[0]
+    path = parts[1]
+
+    for header in headers:
+        if header.lower().startswith("user-agent:"):
+            user_agent = header.split(": ")[1]
+            break
 
     print(user_agent)
-    response = "HTTP/1.1 404 Not Found\r\n\r\n"
 
-    if method == "GET":
-        
-        if user_agent:
-            content_length = len(user_agent)
-            response = (
+    if method == "GET" and path == "/user-agent":
+        content_length = len(user_agent)
+        response = (
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
                 f"Content-Length: {content_length}\r\n"
                 "\r\n"
                 f"{user_agent}"
             )
-
-
+    else:
+        response = "HTTP/1.1 404 Not Found\r\n\r\n"
     print(response)
     connection.sendall(response.encode())
     connection.close()
