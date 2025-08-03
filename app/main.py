@@ -19,28 +19,43 @@ class TCPServer:
 
     def handle_client(self, connection, address):
         try:
-            request = connection.recv(1024).decode()
+            # Read raw bytes first
+            request = b""
+            while b"\r\n\r\n" not in request:
+                chunk = connection.recv(1024)
+                if not chunk:
+                    break
+                request += chunk
+
             if not request:
                 connection.close()
                 return
 
-            lines = request.split("\r\n")
+            # Decode headers only
+            header_part = request.decode().split("\r\n\r\n")[0]
+            lines = header_part.split("\r\n")
             request_line = lines[0]
             method, path, version = request_line.split(" ")
 
-            # Extract User-Agent if present
-            user_agent = ""
-            for line in lines:
-                if line.startswith("User-Agent: "):
-                    user_agent = line[len("User-Agent: "):]
-
-            # Default 404 response
+            # Default response
             response = "HTTP/1.1 404 Not Found\r\n\r\n"
+
+            # Extract headers
+            headers = {}
+            for line in lines[1:]:
+                if ":" in line:
+                    key, value = line.split(":", 1)
+                    headers[key.strip().lower()] = value.strip()
+
+            # Extract body (partial or full)
+            header_end = request.find(b"\r\n\r\n")
+            body = request[header_end + 4:]
 
             if method == "GET":
                 if path == "/":
                     response = "HTTP/1.1 200 OK\r\n\r\n"
                 elif path == "/user-agent":
+                    user_agent = headers.get("user-agent", "")
                     content = user_agent
                     response = (
                         "HTTP/1.1 200 OK\r\n"
@@ -61,28 +76,43 @@ class TCPServer:
                 elif path.startswith("/files/") and self.directory:
                     filename = path[len("/files/"):]
                     file_path = os.path.join(self.directory, filename)
-
                     if os.path.isfile(file_path):
                         with open(file_path, "rb") as f:
                             file_data = f.read()
-                        response = (
+                        header = (
                             "HTTP/1.1 200 OK\r\n"
                             "Content-Type: application/octet-stream\r\n"
                             f"Content-Length: {len(file_data)}\r\n"
                             "\r\n"
-                        ).encode() + file_data
-                        connection.sendall(response)
+                        ).encode()
+                        connection.sendall(header + file_data)
                         connection.close()
                         return
                     else:
                         response = "HTTP/1.1 404 Not Found\r\n\r\n"
 
-            connection.sendall(response.encode())
+            elif method == "POST" and path.startswith("/files/") and self.directory:
+                filename = path[len("/files/"):]
+                file_path = os.path.join(self.directory, filename)
+
+                content_length = int(headers.get("content-length", 0))
+
+                # Read more if body is incomplete
+                while len(body) < content_length:
+                    body += connection.recv(1024)
+
+                # Save file
+                with open(file_path, "wb") as f:
+                    f.write(body)
+
+                response = "HTTP/1.1 201 Created\r\n\r\n"
+
+            connection.sendall(response.encode() if isinstance(response, str) else response)
+
         except Exception as e:
             print("Error:", e)
         finally:
             connection.close()
-
 
 def main():
     # Default directory = None
