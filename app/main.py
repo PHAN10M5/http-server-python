@@ -58,6 +58,10 @@ class TCPServer():
         connection.close()
 
 
-if __name__ == "__main__":
+def main():
     server = TCPServer()
     server.start()
+
+
+if __name__ == "__main__":
+    main()
