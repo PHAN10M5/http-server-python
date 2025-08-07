@@ -64,15 +64,28 @@ class TCPServer:
                         "\r\n"
                         f"{content}"
                     )
+                    
                 elif path.startswith("/echo/"):
                     content = path[len("/echo/"):]
+                    accept_encoding = headers.get("accept-encoding", "")
+                    supports_gzip = "gzip" in accept_encoding.lower()
+
+                    status_line = "HTTP/1.1 200 OK\r\n"
+                    content_type = "Content-Type: text/plain\r\n"
+                    content_encoding = "Content-Encoding: gzip\r\n" if supports_gzip else ""
+                    content_length = f"Content-Length: {len(content.encode())}\r\n"
+                    blank_line = "\r\n"
+
                     response = (
-                        "HTTP/1.1 200 OK\r\n"
-                        "Content-Type: text/plain\r\n"
-                        f"Content-Length: {len(content.encode())}\r\n"
-                        "\r\n"
-                        f"{content}"
+                        status_line +
+                        content_type +
+                        content_encoding +
+                        content_length +
+                        blank_line +
+                        content
                     )
+
+
                 elif path.startswith("/files/") and self.directory:
                     filename = path[len("/files/"):]
                     file_path = os.path.join(self.directory, filename)
