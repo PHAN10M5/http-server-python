@@ -81,14 +81,18 @@ class TCPServer:
 
 
             elif path == "/user-agent":
-                user_agent = headers.get("user-agent", "")
-                content = user_agent
+                user_agent = ""
+                for header in lines[1:]:
+                    if header.lower().startswith("user-agent:"):
+                        user_agent = header.split(":", 1)[1].strip()
+                        break
+                content = user_agent.encode()
                 response = (
                     f"HTTP/1.1 200 OK\r\n"
                     f"Content-Type: text/plain\r\n"
-                    f"Content-Length: {len(content)}\r\n"
+                    f"Content-Length: {len(user_agent)}\r\n"
                     f"\r\n"
-                ).encode() + content.encode()
+                ).encode() + content
 
             elif path.startswith("/echo/"):
                 content = path[len("/echo/"):]
@@ -143,7 +147,7 @@ class TCPServer:
             response = b"HTTP/1.1 201 Created\r\n\r\n"
 
         else:
-            response = b"HTTP/1.1 400 Bad Request\r\n\r\n"
+            response = b"HTTP/1.1 400\r\n\r\n"
 
         connection.sendall(response)
         return response
