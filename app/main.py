@@ -125,7 +125,7 @@ class TCPServer:
                 f.write(body)
             return b"HTTP/1.1 201 Created\r\n\r\n"
 
-        return b"HTTP/1.1 400 Bad Request\r\n\r\n"
+        return b"HTTP/1.1 404 Not Found\r\n\r\n"
 
 
 def main():
