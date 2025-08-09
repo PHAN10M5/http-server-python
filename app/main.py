@@ -20,43 +20,84 @@ class TCPServer:
 
     def handle_client(self, connection, address):
         try:
-            # Read raw bytes until headers end
-            request = b""
-            while b"\r\n\r\n" not in request:
-                chunk = connection.recv(1024)
-                if not chunk:
+            while True:  # loop to handle multiple requests per connection
+                # Read request headers fully
+                request = b""
+                while b"\r\n\r\n" not in request:
+                    chunk = connection.recv(1024)
+                    if not chunk:
+                        return  # client closed connection
+                    request += chunk
+
+                if not request.strip():
+                    return  # no request, close
+
+                # Parse request
+                header_part = request.decode(errors="replace").split("\r\n\r\n")[0]
+                lines = header_part.split("\r\n")
+                request_line = lines[0]
+                method, path, version = request_line.split(" ")
+
+                headers = {}
+                for line in lines[1:]:
+                    if ":" in line:
+                        key, value = line.split(":", 1)
+                        headers[key.strip().lower()] = value.strip()
+
+                # Read body if needed
+                header_end = request.find(b"\r\n\r\n")
+                body = request[header_end + 4:]
+                content_length = int(headers.get("content-length", 0))
+                while len(body) < content_length:
+                    body += connection.recv(1024)
+
+                # Handle request (same as before)
+                response = self.handle_request(method, path, headers, body, connection)
+
+                # Send response
+                if response:
+                    connection.sendall(response)
+
+                # Close if client said so
+                if headers.get("connection", "").lower() == "close":
                     break
-                request += chunk
 
-            if not request:
-                connection.close()
-                return
+        except Exception as e:
+            print("Error:", e)
+        finally:
+            connection.close()
 
-            # Parse headers
-            header_part = request.decode(errors="replace").split("\r\n\r\n")[0]
-            lines = header_part.split("\r\n")
-            request_line = lines[0]
-            method, path, version = request_line.split(" ")
 
-            headers = {}
-            for line in lines[1:]:
-                if ":" in line:
-                    key, value = line.split(":", 1)
-                    headers[key.strip().lower()] = value.strip()
+    def handle_request(self, method, path, headers, body, connection):
+        if method == "GET":
+            if path == "/":
+                response = b"HTTP/1.1 200 OK\r\n\r\n"
 
-            # Body after headers (may be incomplete for POST)
-            header_end = request.find(b"\r\n\r\n")
-            body = request[header_end + 4:]
+            elif path == "/user-agent":
+                user_agent = headers.get("user-agent", "")
+                content = user_agent.encode()
+                response = (
+                    f"HTTP/1.1 200 OK\r\n"
+                    f"Content-Type: text/plain\r\n"
+                    f"Content-Length: {len(content)}\r\n"
+                    f"\r\n"
+                ).encode() + content
 
-            response = b"HTTP/1.1 404 Not Found\r\n\r\n"
+            elif path.startswith("/echo/"):
+                content = path[len("/echo/"):].encode()
+                accept_encoding = headers.get("accept-encoding", "")
+                supports_gzip = "gzip" in accept_encoding.lower()
 
-            if method == "GET":
-                if path == "/":
-                    response = b"HTTP/1.1 200 OK\r\n\r\n"
-
-                elif path == "/user-agent":
-                    user_agent = headers.get("user-agent", "")
-                    content = user_agent.encode()
+                if supports_gzip:
+                    compressed_content = gzip.compress(content)
+                    response = (
+                        f"HTTP/1.1 200 OK\r\n"
+                        f"Content-Type: text/plain\r\n"
+                        f"Content-Encoding: gzip\r\n"
+                        f"Content-Length: {len(compressed_content)}\r\n"
+                        f"\r\n"
+                    ).encode() + compressed_content
+                else:
                     response = (
                         f"HTTP/1.1 200 OK\r\n"
                         f"Content-Type: text/plain\r\n"
@@ -64,64 +105,38 @@ class TCPServer:
                         f"\r\n"
                     ).encode() + content
 
-                elif path.startswith("/echo/"):
-                    content = path[len("/echo/"):].encode()
-                    accept_encoding = headers.get("accept-encoding", "")
-                    supports_gzip = "gzip" in accept_encoding.lower()
-
-                    if supports_gzip:
-                        compressed_content = gzip.compress(content)
-                        response = (
-                            f"HTTP/1.1 200 OK\r\n"
-                            f"Content-Type: text/plain\r\n"
-                            f"Content-Encoding: gzip\r\n"
-                            f"Content-Length: {len(compressed_content)}\r\n"
-                            f"\r\n"
-                        ).encode() + compressed_content
-                    else:
-                        response = (
-                            f"HTTP/1.1 200 OK\r\n"
-                            f"Content-Type: text/plain\r\n"
-                            f"Content-Length: {len(content)}\r\n"
-                            f"\r\n"
-                        ).encode() + content
-
-                elif path.startswith("/files/") and self.directory:
-                    filename = path[len("/files/"):]
-                    file_path = os.path.join(self.directory, filename)
-                    if os.path.isfile(file_path):
-                        with open(file_path, "rb") as f:
-                            file_data = f.read()
-                        header = (
-                            f"HTTP/1.1 200 OK\r\n"
-                            f"Content-Type: application/octet-stream\r\n"
-                            f"Content-Length: {len(file_data)}\r\n"
-                            f"\r\n"
-                        ).encode()
-                        connection.sendall(header + file_data)
-                        return
-                    else:
-                        response = b"HTTP/1.1 404 Not Found\r\n\r\n"
-
-            elif method == "POST" and path.startswith("/files/") and self.directory:
+            elif path.startswith("/files/") and self.directory:
                 filename = path[len("/files/"):]
                 file_path = os.path.join(self.directory, filename)
+                if os.path.isfile(file_path):
+                    with open(file_path, "rb") as f:
+                        file_data = f.read()
+                    header = (
+                        f"HTTP/1.1 200 OK\r\n"
+                        f"Content-Type: application/octet-stream\r\n"
+                        f"Content-Length: {len(file_data)}\r\n"
+                        f"\r\n"
+                    ).encode()
+                    connection.sendall(header + file_data)
+                    return
+                else:
+                    response = b"HTTP/1.1 404 Not Found\r\n\r\n"
 
-                content_length = int(headers.get("content-length", 0))
-                while len(body) < content_length:
-                    body += connection.recv(1024)
+        elif method == "POST" and path.startswith("/files/") and self.directory:
+            filename = path[len("/files/"):]
+            file_path = os.path.join(self.directory, filename)
 
-                with open(file_path, "wb") as f:
-                    f.write(body)
+            content_length = int(headers.get("content-length", 0))
+            while len(body) < content_length:
+                body += connection.recv(1024)
 
-                response = b"HTTP/1.1 201 Created\r\n\r\n"
+            with open(file_path, "wb") as f:
+                f.write(body)
 
-            connection.sendall(response)
+            response = b"HTTP/1.1 201 Created\r\n\r\n"
 
-        except Exception as e:
-            print("Error:", e)
-        finally:
-            connection.close()
+        connection.sendall(response)
+        return response
 
 
 def main():
