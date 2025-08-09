@@ -108,7 +108,7 @@ class TCPServer:
                     response = (
                         f"HTTP/1.1 200 OK\r\n"
                         f"Content-Type: text/plain\r\n"
-                        f"Content-Length: {len(content)}\r\n"
+                        f"Content-Length: {len(content.decode())}\r\n"
                         f"\r\n"
                     ).encode() + content
 
