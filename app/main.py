@@ -37,7 +37,6 @@ class TCPServer:
             connection.close()
 
     def receive_http_request(self, connection):
-        """Read request until headers are complete, then read body if needed."""
         request = b""
         while b"\r\n\r\n" not in request:
             chunk = connection.recv(1024)
@@ -64,11 +63,9 @@ class TCPServer:
         return method, path, headers, body
 
     def parse_http_request(self, request_data):
-        """Just unpack the tuple for clarity."""
         return request_data
 
     def route_request(self, method, path, headers, body):
-        """Match request to handler."""
         if method == "GET":
             if path == "/":
                 return self.http_response(200, b"", "text/plain")
@@ -102,7 +99,7 @@ class TCPServer:
                 f.write(body)
             return b"HTTP/1.1 201 Created\r\n\r\n"
 
-        return b"HTTP/1.1 400 Bad Request\r\n\r\n"
+        return b"HTTP/1.1 404 Not Found\r\n\r\n"
 
     def http_response(self, status_code, body, content_type, extra_headers=None):
         """Build an HTTP response."""
