@@ -142,6 +142,9 @@ class TCPServer:
 
             response = b"HTTP/1.1 201 Created\r\n\r\n"
 
+        else:
+            response = b"HTTP/1.1 400 Bad Request\r\n\r\n"
+
         connection.sendall(response)
         return response
 
