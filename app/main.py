@@ -71,7 +71,14 @@ class TCPServer:
     def handle_request(self, method, path, headers, body, connection):
         if method == "GET":
             if path == "/":
-                response = b"HTTP/1.1 200 OK\r\n\r\n"
+                content = b""
+                response = (
+                    f"HTTP/1.1 200 OK\r\n"
+                    f"Content-Type: text/plain\r\n"
+                    f"Content-Length: {len(content)}\r\n"
+                    f"\r\n"
+                ).encode() + content
+
 
             elif path == "/user-agent":
                 user_agent = headers.get("user-agent", "")
