@@ -51,7 +51,6 @@ class TCPServer:
                 while len(body) < content_length:
                     body += connection.recv(1024)
 
-                # Handle request (same as before)
                 response = self.handle_request(method, path, headers, body, connection)
 
                 # Send response
@@ -81,18 +80,15 @@ class TCPServer:
 
 
             elif path == "/user-agent":
-                user_agent = ""
-                for header in lines[1:]:
-                    if header.lower().startswith("user-agent:"):
-                        user_agent = header.split(":", 1)[1].strip()
-                        break
+                user_agent = headers.get("user-agent", "")
                 content = user_agent.encode()
                 response = (
                     f"HTTP/1.1 200 OK\r\n"
                     f"Content-Type: text/plain\r\n"
-                    f"Content-Length: {len(user_agent)}\r\n"
+                    f"Content-Length: {len(content)}\r\n"
                     f"\r\n"
                 ).encode() + content
+
 
             elif path.startswith("/echo/"):
                 content = path[len("/echo/"):]
