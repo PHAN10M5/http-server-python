@@ -91,12 +91,12 @@ class TCPServer:
                 ).encode() + content
 
             elif path.startswith("/echo/"):
-                content = path[len("/echo/"):].encode()
+                content = path[len("/echo/"):]
                 accept_encoding = headers.get("accept-encoding", "")
                 supports_gzip = "gzip" in accept_encoding.lower()
 
                 if supports_gzip:
-                    compressed_content = gzip.compress(content)
+                    compressed_content = gzip.compress(content.encode())
                     response = (
                         f"HTTP/1.1 200 OK\r\n"
                         f"Content-Type: text/plain\r\n"
@@ -108,9 +108,9 @@ class TCPServer:
                     response = (
                         f"HTTP/1.1 200 OK\r\n"
                         f"Content-Type: text/plain\r\n"
-                        f"Content-Length: {len(content.decode())}\r\n"
+                        f"Content-Length: {len(content)}\r\n"
                         f"\r\n"
-                    ).encode() + content
+                    ).encode() + content.encode()
 
             elif path.startswith("/files/") and self.directory:
                 filename = path[len("/files/"):]
